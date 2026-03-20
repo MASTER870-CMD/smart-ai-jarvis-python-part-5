@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced AI Face & Emotion Detector</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #121212;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+        
+        .video-container {
+            position: relative;
+            margin-top: 20px;
+            border: 3px solid #00ffcc;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(0, 255, 204, 0.5);
+        }
+
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        #loading {
+            margin-top: 20px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #00ffcc;
+        }
+
+        .features-list {
+            margin-top: 20px;
+            font-size: 0.9rem;
+            color: #aaa;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container text-center mt-4">
+    <h1>🤖 Advanced AI Face Scanner</h1>
+    <p>Detecting 10+ Features: Age, Gender, 7 Emotions, and Landmarks</p>
+    
+    <div id="loading">
+        <div class="spinner-border text-info" role="status"></div>
+        <br>Loading AI Models... (This may take a moment)
+    </div>
+
+    <div class="video-container">
+        <video id="video" width="720" height="560" autoplay muted></video>
+    </div>
+
+    <div class="features-list">
+        Powered by TensorFlow.js & Face-api.js
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+
+<script>
+    const video = document.getElementById('video');
+    const loadingDiv = document.getElementById('loading');
+
+    // Load all the specific AI models needed
+    Promise.all([
+        faceapi.nets.tinyFaceDetector.loadFromUri('https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights'),
+        faceapi.nets.faceLandmark68Net.loadFromUri('https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights'),
+        faceapi.nets.faceRecognitionNet.loadFromUri('https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights'),
+        faceapi.nets.faceExpressionNet.loadFromUri('https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights'),
+        faceapi.nets.ageGenderNet.loadFromUri('https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights')
+    ]).then(startVideo);
+
+    function startVideo() {
+        navigator.mediaDevices.getUserMedia({ video: {} })
+            .then(stream => {
+                video.srcObject = stream;
+            })
+            .catch(err => console.error("Camera Error:", err));
+    }
+
+    video.addEventListener('play', () => {
+        // Hide loading text once video plays
+        loadingDiv.style.display = 'none';
+
+        // Create canvas overlay
+        const canvas = faceapi.createCanvasFromMedia(video);
+        document.querySelector('.video-container').append(canvas);
+        
+        const displaySize = { width: video.width, height: video.height };
+        faceapi.matchDimensions(canvas, displaySize);
+
+        setInterval(async () => {
+            // Detect all faces with all features
+            const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions())
+                .withFaceLandmarks()
+                .withFaceExpressions()
+                .withAgeAndGender();
+
+            const resizedDetections = faceapi.resizeResults(detections, displaySize);
+            
+            // Clear previous drawing
+            canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+
+            // 1. Draw Face Detection Box
+            faceapi.draw.drawDetections(canvas, resizedDetections);
+            
+            // 2. Draw Face Landmarks (dots on face)
+            faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
+            
+            // 3. Draw Emotion Labels
+            faceapi.draw.drawFaceExpressions(canvas, resizedDetections);
+
+            // 4. Draw Age & Gender & Detailed Stats
+            resizedDetections.forEach(detection => {
+                const box = detection.detection.box;
+                
+                const age = Math.round(detection.age);
+                const gender = detection.gender;
+                const emotion = detection.expressions;
+
+                // Create a label with multiple features
+                const text = [
+                    `Age: ${age} years`,
+                    `Gender: ${gender}`,
+                    `Happy: ${Math.round(emotion.happy * 100)}%`,
+                    `Sad: ${Math.round(emotion.sad * 100)}%`,
+                    `Angry: ${Math.round(emotion.angry * 100)}%`,
+                    `Surprised: ${Math.round(emotion.surprised * 100)}%`
+                ];
+                
+                // Draw the text box slightly offset from the face box
+                const anchor = { x: box.x + box.width + 10, y: box.y };
+                
+                // Custom drawing to show list of features
+                new faceapi.draw.DrawTextField(text, anchor).draw(canvas);
+            });
+        }, 100);
+    });
+</script>
+
+</body>
+</html>

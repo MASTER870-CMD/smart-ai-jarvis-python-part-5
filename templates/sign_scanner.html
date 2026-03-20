@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>JARVIS VISION SYSTEM</title>
+    <style>
+        body { 
+            background-color: #000; 
+            margin: 0; overflow: hidden; 
+            display: flex; justify-content: center; align-items: center; 
+            height: 100vh;
+            font-family: 'Segoe UI', sans-serif;
+        }
+        .vid-container {
+            position: relative; width: 95%; max-width: 1400px; aspect-ratio: 16/9;
+            border: 2px solid #00d9ff; box-shadow: 0 0 30px rgba(0, 217, 255, 0.3);
+            background: #111; border-radius: 10px;
+        }
+        #webcam { display: none; }
+        #output_canvas { width: 100%; height: 100%; transform: scaleX(-1); border-radius: 8px; }
+        .hud-overlay { position: absolute; top: 30px; left: 30px; z-index: 10; pointer-events: none; }
+        h1 { color: #00d9ff; font-size: 28px; margin: 0; text-shadow: 0 0 10px #00d9ff; letter-spacing: 2px; }
+        #status-box {
+            margin-top: 15px; color: #fff; font-size: 20px;
+            background: rgba(0, 50, 50, 0.7); padding: 10px 20px;
+            border-left: 5px solid #00d9ff; display: inline-block;
+        }
+        .corner { position: absolute; width: 50px; height: 50px; border: 4px solid #00d9ff; box-shadow: 0 0 15px #00d9ff; }
+        .tl { top: -2px; left: -2px; border-right: none; border-bottom: none; }
+        .tr { top: -2px; right: -2px; border-left: none; border-bottom: none; }
+        .bl { bottom: -2px; left: -2px; border-right: none; border-top: none; }
+        .br { bottom: -2px; right: -2px; border-left: none; border-top: none; }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+</head>
+<body>
+    <div class="vid-container">
+        <div class="corner tl"></div><div class="corner tr"></div>
+        <div class="corner bl"></div><div class="corner br"></div>
+        <div class="hud-overlay">
+            <h1>SYSTEM: SIGN LANGUAGE DECODER</h1>
+            <div id="status-box">INITIALIZING OPTICAL SENSORS...</div>
+        </div>
+        <video id="webcam"></video>
+        <canvas id="output_canvas"></canvas>
+    </div>
+<script>
+    const videoElement = document.getElementById('webcam');
+    const canvasElement = document.getElementById('output_canvas');
+    const canvasCtx = canvasElement.getContext('2d');
+    const statusBox = document.getElementById('status-box');
+    
+    function resizeCanvas() {
+        canvasElement.width = canvasElement.clientWidth;
+        canvasElement.height = canvasElement.clientHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    let lastSpoken = 0;
+    function speak(text) {
+        const now = Date.now();
+        if (now - lastSpoken > 2500) { 
+            const utterance = new SpeechSynthesisUtterance(text);
+            window.speechSynthesis.speak(utterance);
+            lastSpoken = now;
+        }
+    }
+
+    function onResults(results) {
+        canvasCtx.save();
+        canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+        canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
+
+        if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+            statusBox.innerText = "HAND DETECTED - ANALYZING SEQUENCE";
+            statusBox.style.color = "#00d9ff";
+            for (const landmarks of results.multiHandLandmarks) {
+                drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, {color: '#00d9ff', lineWidth: 4});
+                drawLandmarks(canvasCtx, landmarks, {color: '#ffffff', lineWidth: 1, radius: 4});
+                detectSign(landmarks);
+            }
+        } else {
+            statusBox.innerText = "SCANNING FOR HAND GESTURES...";
+            statusBox.style.color = "#fff";
+        }
+        canvasCtx.restore();
+    }
+
+    function detectSign(landmarks) {
+        let fingers = [0, 0, 0, 0, 0];
+        if (landmarks[4].x < landmarks[3].x) fingers[0] = 1; 
+        if (landmarks[8].y < landmarks[6].y) fingers[1] = 1;
+        if (landmarks[12].y < landmarks[10].y) fingers[2] = 1;
+        if (landmarks[16].y < landmarks[14].y) fingers[3] = 1;
+        if (landmarks[20].y < landmarks[18].y) fingers[4] = 1;
+
+        let sign = "";
+        let fStr = fingers.toString();
+
+        if (fStr === "1,1,1,1,1" || fStr === "0,1,1,1,1") sign = "HELLO";
+        else if (fStr === "0,0,0,0,0" || fStr === "1,0,0,0,0") sign = "YES";
+        else if (fStr === "0,1,1,0,0") sign = "PEACE";
+        else if (fStr === "0,1,0,0,0") sign = "LOOK";
+        else if (fStr === "0,1,0,0,1" || fStr === "1,1,0,0,1") sign = "I LOVE YOU";
+        else if (fStr === "0,0,0,0,1") sign = "PROMISE";
+
+        if (sign) {
+            statusBox.innerText = "MEANING: " + sign;
+            statusBox.style.color = "#00ff00";
+            canvasCtx.font = "bold 80px Arial";
+            canvasCtx.fillStyle = "#00ff00";
+            canvasCtx.fillText(sign, 50, canvasElement.height - 50);
+            speak(sign);
+        }
+    }
+
+    const hands = new Hands({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`});
+    hands.setOptions({maxNumHands: 1, modelComplexity: 1, minDetectionConfidence: 0.7, minTrackingConfidence: 0.5});
+    hands.onResults(onResults);
+
+    const camera = new Camera(videoElement, {onFrame: async () => {await hands.send({image: videoElement});}, width: 1280, height: 720});
+    camera.start();
+</script>
+</body>
+</html>

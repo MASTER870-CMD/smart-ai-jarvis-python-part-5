@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STARK INDUSTRIES | MK-85 HUD</title>
+    <script src="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Antonio:wght@700&family=Share+Tech+Mono&display=swap');
+
+        :root {
+            --cyan: #00f3ff;
+            --cyan-dim: rgba(0, 243, 255, 0.2);
+            --cyan-glow: rgba(0, 243, 255, 0.6);
+            --danger: #ff3333;
+            --bg: #020406;
+        }
+
+        body {
+            margin: 0;
+            background-color: var(--bg);
+            background-image: 
+                radial-gradient(circle at 50% 50%, #0d1e2d 0%, #000 85%),
+                linear-gradient(rgba(0, 243, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 243, 255, 0.03) 1px, transparent 1px);
+            background-size: 100% 100%, 30px 30px, 30px 30px;
+            height: 100vh;
+            width: 100vw;
+            color: var(--cyan);
+            font-family: 'Share Tech Mono', monospace;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* --- LAYOUT ANIMATION --- */
+        .interface {
+            width: 95vw;
+            height: 90vh;
+            display: grid;
+            grid-template-columns: 280px 1fr 280px;
+            grid-template-rows: 60px 1fr 100px;
+            position: relative;
+            animation: bootUp 1s ease-out;
+            transition: all 0.5s ease;
+        }
+
+        @keyframes bootUp {
+            0% { opacity: 0; transform: scale(0.95); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+
+        /* --- TOP RIGHT CONTROLS --- */
+        .top-controls {
+            position: absolute; top: 20px; right: 20px; display: flex; gap: 15px; z-index: 200;
+        }
+        .btn-ctrl {
+            border: 1px solid var(--cyan); color: var(--cyan); background: rgba(0, 243, 255, 0.05);
+            padding: 8px 15px; font-family: 'Share Tech Mono', monospace; font-size: 0.8rem;
+            cursor: pointer; letter-spacing: 2px; transition: all 0.3s; text-transform: uppercase;
+        }
+        .btn-ctrl:hover { background: var(--cyan); color: #000; box-shadow: 0 0 20px var(--cyan); }
+        .btn-danger { border-color: var(--danger); color: var(--danger); background: rgba(255, 51, 51, 0.05); }
+        .btn-danger:hover { background: var(--danger); color: #fff; box-shadow: 0 0 20px var(--danger); }
+
+        /* --- DECORATIVE BORDERS --- */
+        .border-line { position: absolute; background: var(--cyan); box-shadow: 0 0 10px var(--cyan); opacity: 0.6; }
+        .top-bar { top: 0; left: 0; width: 100%; height: 2px; }
+        .bottom-bar { bottom: 0; left: 0; width: 100%; height: 2px; }
+
+        /* --- LEFT PANEL --- */
+        .panel-left { display: flex; flex-direction: column; padding: 20px; border-right: 1px solid var(--cyan-dim); }
+        .stark-logo { font-family: 'Antonio', sans-serif; font-size: 2.5rem; letter-spacing: 2px; background: linear-gradient(90deg, var(--cyan), transparent); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-transform: uppercase; }
+        .logo-sub { font-size: 0.8rem; letter-spacing: 4px; color: var(--cyan); opacity: 0.7; margin-bottom: 30px; }
+        .suit-figure { flex-grow: 1; border: 1px solid var(--cyan-dim); background: rgba(0, 243, 255, 0.02); position: relative; display: flex; align-items: center; justify-content: center; color: var(--cyan-dim); animation: flicker 4s infinite; }
+        .suit-figure::after { content: "SUIT: MK-85"; font-size: 0.8rem; letter-spacing: 2px; }
+
+        /* --- RIGHT PANEL --- */
+        .panel-right { padding: 20px; border-left: 1px solid var(--cyan-dim); text-align: right; display: flex; flex-direction: column; gap: 15px; }
+        .data-box { border: 1px solid var(--cyan-dim); padding: 10px; background: rgba(0, 243, 255, 0.02); position: relative; }
+        .data-box::before { content: ""; position: absolute; top: -1px; right: -1px; width: 10px; height: 10px; border-top: 2px solid var(--cyan); border-right: 2px solid var(--cyan); }
+        .data-title { font-size: 0.7rem; color: #fff; opacity: 0.5; margin-bottom: 5px; text-transform: uppercase; }
+        .big-text { font-size: 2rem; color: #fff; text-shadow: 0 0 10px rgba(255,255,255,0.3); }
+
+        /* --- CENTER STAGE --- */
+        .center-stage { grid-column: 2; grid-row: 2; display: flex; justify-content: center; align-items: center; position: relative; flex-direction: column; }
+        .arc-container { position: relative; width: 400px; height: 400px; display: flex; justify-content: center; align-items: center; cursor: pointer; }
+        .circle { position: absolute; border-radius: 50%; }
+        .c-core { width: 140px; height: 140px; background: radial-gradient(circle, #ffffff 10%, var(--cyan) 60%, transparent 90%); box-shadow: 0 0 60px var(--cyan-glow), inset 0 0 20px #fff; z-index: 10; display: flex; justify-content: center; align-items: center; font-family: 'Antonio', sans-serif; font-size: 1.5rem; color: #000; letter-spacing: 2px; text-shadow: 0 0 5px white; }
+        .c-inner { width: 180px; height: 180px; border: 2px dashed var(--cyan); opacity: 0.8; animation: rotate-cw 20s linear infinite; }
+        .c-mid { width: 260px; height: 260px; background: repeating-conic-gradient(var(--cyan) 0 5deg, transparent 5deg 15deg); -webkit-mask: radial-gradient(transparent 60%, black 61%); mask: radial-gradient(transparent 60%, black 61%); opacity: 0.7; animation: rotate-ccw 10s cubic-bezier(0.4, 0.0, 0.2, 1) infinite; }
+        .c-outer { width: 350px; height: 350px; border: 1px solid rgba(0, 243, 255, 0.3); border-top: 4px solid var(--cyan); border-bottom: 4px solid var(--cyan); animation: rotate-scan 8s ease-in-out infinite; }
+
+        @keyframes rotate-cw { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes rotate-ccw { 0% { transform: rotate(360deg); } 100% { transform: rotate(0deg); } }
+        @keyframes rotate-scan { 0% { transform: rotate(0deg); opacity: 0.5; } 50% { transform: rotate(180deg); opacity: 1; border-color: #fff; } 100% { transform: rotate(360deg); opacity: 0.5; } }
+        @keyframes flicker { 0% { opacity: 1; } 95% { opacity: 1; } 96% { opacity: 0.8; } 97% { opacity: 1; } 98% { opacity: 0.5; } 99% { opacity: 1; } }
+
+        /* STATES */
+        .listening .c-core { animation: pulse-deep 1.5s infinite alternate; background: radial-gradient(circle, #fff 30%, var(--cyan) 70%, transparent 100%); }
+        .speaking .c-core { background: radial-gradient(circle, #fff 0%, #ff0055 60%, transparent 100%); box-shadow: 0 0 80px #ff0055; animation: vibrate 0.1s infinite; }
+        .speaking .c-outer { border-color: #ff0055; animation-duration: 1s; }
+        @keyframes pulse-deep { 0% { transform: scale(0.95); box-shadow: 0 0 40px var(--cyan); } 100% { transform: scale(1.05); box-shadow: 0 0 90px var(--cyan); } }
+        @keyframes vibrate { 0% { transform: translate(0,0); } 20% { transform: translate(-2px,2px); } 40% { transform: translate(-2px,-2px); } 60% { transform: translate(2px,2px); } 80% { transform: translate(2px,-2px); } }
+
+        /* --- SELECTION SCREEN --- */
+        #selection-screen { position: absolute; z-index: 100; background: rgba(0,0,0,0.95); width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; backdrop-filter: blur(20px); }
+        .btn { background: rgba(0, 243, 255, 0.05); border: 1px solid var(--cyan); color: var(--cyan); padding: 15px 50px; font-family: 'Antonio', sans-serif; font-size: 1.5rem; cursor: pointer; margin: 15px; text-transform: uppercase; letter-spacing: 3px; transition: all 0.3s ease; }
+        .btn:hover { background: var(--cyan); color: #000; box-shadow: 0 0 40px var(--cyan); }
+        .hidden { display: none !important; }
+
+        #status-text { margin-top: 20px; font-size: 1.8rem; text-transform: uppercase; text-shadow: 0 0 10px var(--cyan); letter-spacing: 2px; }
+        #conversation { margin-top: 15px; font-style: italic; color: #eee; min-height: 40px; text-align: center; width: 80%; background: rgba(0,0,0,0.5); padding: 10px; border: 1px solid rgba(0, 243, 255, 0.2); }
+        
+        select { background: #000; color: var(--cyan); border: 1px solid var(--cyan); padding: 8px; font-family: 'Share Tech Mono', monospace; width: 200px; outline: none; }
+        #voiceSelect { position: relative; z-index: 9999; pointer-events: auto; }
+
+        /* ========================================= */
+        /* === VIRTUAL KEYBOARD (INTEGRATED) === */
+        /* ========================================= */
+        #virtual-keyboard-container {
+            position: absolute; bottom: 50px; left: 50%; transform: translateX(-50%);
+            width: 800px; background: rgba(0, 10, 20, 0.98); border: 1px solid var(--cyan);
+            box-shadow: 0 0 50px var(--cyan-dim); padding: 20px;
+            display: flex; flex-direction: column; gap: 10px; z-index: 300; border-radius: 15px;
+            opacity: 0; pointer-events: none; transition: opacity 0.3s;
+        }
+        #virtual-keyboard-container.active { opacity: 1; pointer-events: all; }
+
+        #kb-response-panel {
+            min-height: 60px; color: #fff; font-size: 1.1rem; margin-bottom: 15px;
+            text-shadow: 0 0 5px var(--cyan); border-left: 3px solid var(--cyan);
+            padding-left: 10px; display: flex; align-items: flex-end;
+        }
+
+        .kb-display { width: 97%; background: rgba(0, 243, 255, 0.1); border: 1px solid var(--cyan); color: var(--cyan); font-family: 'Share Tech Mono'; font-size: 1.5rem; padding: 15px; margin-bottom: 10px; outline: none; text-transform: uppercase; }
+        .kb-row { display: flex; justify-content: center; gap: 5px; }
+        .kb-key { background: rgba(0, 243, 255, 0.05); border: 1px solid var(--cyan); color: var(--cyan); padding: 10px 0; width: 60px; font-family: 'Antonio'; font-size: 1.2rem; cursor: pointer; text-align: center; transition: 0.1s; }
+        .kb-key:hover { background: var(--cyan); color: #000; }
+        .kb-key.active-press { background: #fff; color: #000; box-shadow: 0 0 20px #fff; transform: scale(0.95); }
+        .kb-key.wide { flex-grow: 1; }
+        .kb-key.space { flex-grow: 5; }
+        
+        .cursor { display: inline-block; width: 10px; height: 20px; background: var(--cyan); animation: blink 0.8s infinite; }
+        @keyframes blink { 50% { opacity: 0; } }
+
+        /* ========================================= */
+        /* === VAULT STYLES (INTEGRATED) === */
+        /* ========================================= */
+        #vault-overlay {
+            position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0, 0, 0, 0.95); z-index: 1000;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+        .vault-auth-box {
+            border: 2px solid var(--danger); padding: 40px; background: rgba(20, 0, 0, 0.8);
+            box-shadow: 0 0 50px rgba(255, 0, 0, 0.3); text-align: center;
+        }
+        .pin-display {
+            background: #000; border: 1px solid var(--danger); color: var(--danger);
+            font-size: 2rem; padding: 10px; margin-bottom: 20px; letter-spacing: 15px; height: 40px; width: 200px;
+        }
+        .pin-pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+        .pin-key {
+            background: transparent; border: 1px solid var(--danger); color: var(--danger);
+            padding: 15px; font-size: 1.5rem; cursor: pointer; font-family: 'Antonio';
+        }
+        .pin-key:hover { background: var(--danger); color: #000; }
+
+        #vault-storage {
+            width: 90vw; height: 90vh; border: 1px solid var(--cyan);
+            background: rgba(0, 10, 15, 0.95); padding: 20px; display: flex; flex-direction: column;
+        }
+        .vault-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--cyan); padding-bottom: 10px; margin-bottom: 20px;}
+        
+        .file-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px;
+            overflow-y: auto; flex-grow: 1; padding: 10px;
+        }
+        .file-item {
+            border: 1px solid var(--cyan-dim); height: 150px; position: relative; background: #000;
+            display: flex; align-items: center; justify-content: center; overflow: hidden;
+        }
+        .file-item img, .file-item video { max-width: 100%; max-height: 100%; object-fit: cover; }
+        .delete-btn {
+            position: absolute; top: 0; right: 0; background: red; color: white; border: none;
+            cursor: pointer; padding: 5px; opacity: 0; transition: 0.2s; z-index: 10; font-family: 'Share Tech Mono';
+        }
+        .file-item:hover .delete-btn { opacity: 1; }
+        
+        #media-viewer { position: absolute; top:0; left:0; width:100%; height:100%; background:black; z-index:2000; display:flex; align-items:center; justify-content:center; }
+        #media-viewer img, #media-viewer video { max-width:95%; max-height:95%; border: 2px solid var(--cyan); }
+        .close-viewer { position: absolute; top: 20px; right: 20px; padding: 10px 20px; background: var(--danger); color: white; cursor: pointer; border: none; font-size: 1.2rem; font-family: 'Share Tech Mono'; }
+
+    </style>
+</head>
+<body>
+
+    <div class="top-controls">
+        <button class="btn-ctrl" onclick="window.location.href='pg.html'">[ ← ] BACK</button>
+        <button class="btn-ctrl" onclick="toggleFullScreen()">[ ⛶ ] FULLSCREEN</button>
+        <button class="btn-ctrl" onclick="toggleKeyboard()">[ ⌨ ] KEYBOARD</button>
+        <button class="btn-ctrl btn-danger" onclick="stopAll()">[ X ] ABORT</button>
+    </div>
+
+    <div id="selection-screen">
+        <h1 class="stark-logo" style="font-size: 4rem;">NEXUS SYSTEM</h1>
+        <p style="letter-spacing: 5px; margin-bottom: 50px;">SECURE SERVER ACCESS</p>
+        <div>
+            <button class="btn" onclick="startMode('en')" style="width: 322px;">INITIALIZE SYSTEM</button>
+        </div>
+    </div>
+
+    <div class="interface hidden" id="active-screen">
+        <div class="border-line top-bar"></div><div class="border-line bottom-bar"></div>
+
+        <div class="panel-left">
+            <div class="stark-logo">STARK<br>OS V.4.2</div>
+            <div class="logo-sub">CONNECTED</div>
+            <div class="suit-figure"></div> 
+        </div>
+
+        <div class="center-stage">
+            <div class="arc-container" id="orb-container" ondblclick="openVaultAuth()">
+                <div class="circle c-outer"></div><div class="circle c-mid"></div><div class="circle c-inner"></div><div class="circle c-core">E.D.I.T.H</div>
+            </div>
+            <div id="status-text">INITIALIZING...</div>
+            <div id="conversation">"Awaiting Input..."</div>
+            <div style="margin-top: 30px; text-align: center; display:flex; flex-direction:column; align-items:center; position: relative; z-index: 9999;">
+                <label style="font-size: 0.8rem; margin-bottom:5px;">AUDIO SYNTHESIS</label>
+                <select id="voiceSelect"></select>
+            </div>
+        </div>
+
+        <div class="panel-right">
+            <div class="data-box">
+                <div class="data-title">Weather (Live)</div>
+                <div class="big-text" id="weather-temp">--°C</div>
+                <div style="font-size:0.7rem; opacity:0.7;" id="weather-desc">Scanning...</div>
+            </div>
+            <div class="data-box">
+                <div class="data-title">System Status</div>
+                <div style="color:#0f0">ONLINE</div>
+            </div>
+            <div class="data-box">
+                <div class="data-title">CPU Load</div>
+                <div class="big-text" id="cpu-val">12%</div>
+            </div>
+            <div class="data-box" style="flex-grow:1;">
+                <div class="data-title">Command Memory</div>
+                <div id="command-history" style="font-size:0.75rem; line-height:1.6; opacity:0.9;">> Waiting...</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="vault-overlay" class="hidden">
+        <div id="vault-auth" class="vault-auth-box">
+            <h2 style="color:var(--danger); font-family:'Antonio'; letter-spacing: 2px;">RESTRICTED ACCESS</h2>
+            <div id="pin-display" class="pin-display"></div>
+            <div class="pin-pad">
+                <button class="pin-key" onclick="enterPin('1')">1</button>
+                <button class="pin-key" onclick="enterPin('2')">2</button>
+                <button class="pin-key" onclick="enterPin('3')">3</button>
+                <button class="pin-key" onclick="enterPin('4')">4</button>
+                <button class="pin-key" onclick="enterPin('5')">5</button>
+                <button class="pin-key" onclick="enterPin('6')">6</button>
+                <button class="pin-key" onclick="enterPin('7')">7</button>
+                <button class="pin-key" onclick="enterPin('8')">8</button>
+                <button class="pin-key" onclick="enterPin('9')">9</button>
+                <button class="pin-key" onclick="closeVault()">X</button>
+                <button class="pin-key" onclick="enterPin('0')">0</button>
+                <button class="pin-key" onclick="submitPin()">></button>
+            </div>
+        </div>
+
+        <div id="vault-storage" class="hidden">
+            <div class="vault-header">
+                <h2 style="margin:0; font-family:'Antonio'; letter-spacing: 2px;">SECURE STORAGE</h2>
+                <div>
+                    <input type="file" id="vault-upload" multiple style="display:none" accept="image/*,video/*">
+                    <button class="btn-ctrl" onclick="document.getElementById('vault-upload').click()">[+] UPLOAD</button>
+                    <button class="btn-ctrl btn-danger" onclick="closeVault()">LOCK</button>
+                </div>
+            </div>
+            <div id="file-grid" class="file-grid"></div>
+        </div>
+    </div>
+
+    <div id="media-viewer" class="hidden">
+        <button class="close-viewer" onclick="closeViewer()">CLOSE</button>
+        <div id="viewer-content"></div>
+    </div>
+
+    <div id="virtual-keyboard-container">
+        <div id="kb-response-panel">
+            <span id="type-target"></span><span class="cursor"></span>
+        </div>
+
+        <input type="text" id="kb-input" class="kb-display" placeholder="ENTER COMMAND..." autofocus>
+        
+        <div class="kb-row">
+            <button class="kb-key" data-key="q" onclick="typeKey('Q')">Q</button>
+            <button class="kb-key" data-key="w" onclick="typeKey('W')">W</button>
+            <button class="kb-key" data-key="e" onclick="typeKey('E')">E</button>
+            <button class="kb-key" data-key="r" onclick="typeKey('R')">R</button>
+            <button class="kb-key" data-key="t" onclick="typeKey('T')">T</button>
+            <button class="kb-key" data-key="y" onclick="typeKey('Y')">Y</button>
+            <button class="kb-key" data-key="u" onclick="typeKey('U')">U</button>
+            <button class="kb-key" data-key="i" onclick="typeKey('I')">I</button>
+            <button class="kb-key" data-key="o" onclick="typeKey('O')">O</button>
+            <button class="kb-key" data-key="p" onclick="typeKey('P')">P</button>
+        </div>
+        <div class="kb-row">
+            <button class="kb-key" data-key="a" onclick="typeKey('A')">A</button>
+            <button class="kb-key" data-key="s" onclick="typeKey('S')">S</button>
+            <button class="kb-key" data-key="d" onclick="typeKey('D')">D</button>
+            <button class="kb-key" data-key="f" onclick="typeKey('F')">F</button>
+            <button class="kb-key" data-key="g" onclick="typeKey('G')">G</button>
+            <button class="kb-key" data-key="h" onclick="typeKey('H')">H</button>
+            <button class="kb-key" data-key="j" onclick="typeKey('J')">J</button>
+            <button class="kb-key" data-key="k" onclick="typeKey('K')">K</button>
+            <button class="kb-key" data-key="l" onclick="typeKey('L')">L</button>
+        </div>
+        <div class="kb-row">
+            <button class="kb-key" data-key="z" onclick="typeKey('Z')">Z</button>
+            <button class="kb-key" data-key="x" onclick="typeKey('X')">X</button>
+            <button class="kb-key" data-key="c" onclick="typeKey('C')">C</button>
+            <button class="kb-key" data-key="v" onclick="typeKey('V')">V</button>
+            <button class="kb-key" data-key="b" onclick="typeKey('B')">B</button>
+            <button class="kb-key" data-key="n" onclick="typeKey('N')">N</button>
+            <button class="kb-key" data-key="m" onclick="typeKey('M')">M</button>
+        </div>
+        <div class="kb-row">
+            <button class="kb-key wide" onclick="toggleKeyboard()">EXIT</button>
+            <button class="kb-key space" data-key=" " onclick="typeKey(' ')">SPACE</button>
+            <button class="kb-key wide" data-key="enter" onclick="sendKeyboardInput()">ENTER</button>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // GLOBAL VARIABLES
+        // ==========================================
+        let currentLang = 'en-US'; 
+        let recognition;
+        let isListening = false;
+        let isSpeaking = false;
+        let commandLog = [];
+        
+        // ==========================================
+        // INITIALIZATION
+        // ==========================================
+        function startMode() {
+            // Force English Language
+            currentLang = 'en-US'; 
+
+            document.getElementById('selection-screen').classList.add('hidden');
+            document.getElementById('active-screen').classList.remove('hidden');
+            
+            updateStatus('IDLE', 'var(--cyan)');
+            initVoice();
+            loadVoices();
+            getLocationWeather();
+            initDB(); // INITIALIZE THE VAULT DATABASE
+            
+            setInterval(() => {
+                document.getElementById('cpu-val').innerText = (Math.floor(Math.random() * 30) + 10) + "%";
+            }, 800);
+        }
+
+        // ==========================================
+        // DATABASE LOGIC (PERSISTENT STORAGE FIX)
+        // ==========================================
+        let db;
+        const DB_NAME = "StarkSecureVault";
+        const STORE_NAME = "secure_files";
+
+        function initDB() {
+            const request = indexedDB.open(DB_NAME, 1);
+
+            request.onerror = (event) => {
+                console.error("Database error: " + event.target.errorCode);
+            };
+
+            request.onupgradeneeded = (event) => {
+                db = event.target.result;
+                if (!db.objectStoreNames.contains(STORE_NAME)) {
+                    db.createObjectStore(STORE_NAME, { keyPath: "id" });
+                }
+            };
+
+            request.onsuccess = (event) => {
+                db = event.target.result;
+                console.log("Secure Database Initialized.");
+            };
+        }
+
+        // FIXED SAVE FUNCTION TO PREVENT ERROR
+        function saveFile(file) {
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                // Transaction created INSIDE onload to ensure it's active
+                const transaction = db.transaction([STORE_NAME], "readwrite");
+                const store = transaction.objectStore(STORE_NAME);
+                
+                const fileData = {
+                    id: Date.now() + Math.random().toString(), 
+                    name: file.name,
+                    type: file.type,
+                    data: e.target.result, 
+                    created: new Date()
+                };
+
+                const request = store.add(fileData);
+
+                request.onsuccess = function() {
+                    console.log("File saved to DB successfully");
+                    loadFiles(); 
+                };
+                
+                request.onerror = function() {
+                    console.error("Error saving file");
+                };
+            };
+
+            reader.readAsDataURL(file);
+        }
+
+        function loadFiles() {
+            const transaction = db.transaction([STORE_NAME], "readonly");
+            const store = transaction.objectStore(STORE_NAME);
+            const request = store.getAll();
+
+            request.onsuccess = function(event) {
+                renderFiles(event.target.result);
+            };
+        }
+
+        function deleteFile(id) {
+            const transaction = db.transaction([STORE_NAME], "readwrite");
+            const store = transaction.objectStore(STORE_NAME);
+            const request = store.delete(id);
+
+            request.onsuccess = function() {
+                loadFiles(); 
+            };
+        }
+
+        function renderFiles(files) {
+            const grid = document.getElementById('file-grid');
+            grid.innerHTML = "";
+            
+            if (!files || files.length === 0) {
+                grid.innerHTML = "<div style='grid-column:1/-1; text-align:center; color:gray; padding:20px; font-family:\"Share Tech Mono\"'>[ NO SECURE DATA FOUND ]</div>";
+                return;
+            }
+
+            files.forEach(file => {
+                const div = document.createElement('div');
+                div.className = 'file-item';
+                
+                let content = "";
+                if(file.type.startsWith('image')) {
+                    content = `<img src="${file.data}" onclick="openViewer('${file.data}', 'image')">`;
+                } else if(file.type.startsWith('video')) {
+                    content = `<video src="${file.data}" onclick="openViewer('${file.data}', 'video')"></video>`;
+                }
+                
+                div.innerHTML = `
+                    <button class="delete-btn" onclick="deleteFile('${file.id}')">DEL</button>
+                    ${content}
+                `;
+                grid.appendChild(div);
+            });
+        }
+
+        // ==========================================
+        // VAULT UI LOGIC
+        // ==========================================
+        let vaultPin = "";
+        const CORRECT_PIN = "8989";
+
+        function openVaultAuth() {
+            document.getElementById('vault-overlay').classList.remove('hidden');
+            document.getElementById('vault-auth').classList.remove('hidden');
+            document.getElementById('vault-storage').classList.add('hidden');
+            vaultPin = "";
+            updatePin();
+            try { recognition.stop(); } catch(e){}
+        }
+
+        function enterPin(num) {
+            if(vaultPin.length < 4) {
+                vaultPin += num;
+                updatePin();
+            }
+        }
+
+        function updatePin() {
+            document.getElementById('pin-display').innerText = "*".repeat(vaultPin.length);
+        }
+
+        function submitPin() {
+            if(vaultPin === CORRECT_PIN) {
+                document.getElementById('vault-auth').classList.add('hidden');
+                document.getElementById('vault-storage').classList.remove('hidden');
+                loadFiles(); 
+            } else {
+                vaultPin = "";
+                updatePin();
+                const display = document.getElementById('pin-display');
+                display.style.borderColor = 'red';
+                setTimeout(() => display.style.borderColor = 'var(--danger)', 500);
+            }
+        }
+
+        function closeVault() {
+            document.getElementById('vault-overlay').classList.add('hidden');
+            try { recognition.start(); } catch(e){}
+        }
+
+        document.getElementById('vault-upload').addEventListener('change', (e) => {
+            const files = Array.from(e.target.files);
+            files.forEach(file => saveFile(file));
+            e.target.value = ""; 
+        });
+
+        function openViewer(src, type) {
+            const viewer = document.getElementById('media-viewer');
+            const content = document.getElementById('viewer-content');
+            viewer.classList.remove('hidden');
+            
+            if(type === 'image') {
+                content.innerHTML = `<img src="${src}">`;
+            } else {
+                content.innerHTML = `<video src="${src}" controls autoplay></video>`;
+            }
+        }
+
+        function closeViewer() {
+            document.getElementById('media-viewer').classList.add('hidden');
+            document.getElementById('viewer-content').innerHTML = "";
+        }
+
+        // ==========================================
+        // SPEECH RECOGNITION (WEB API)
+        // ==========================================
+        function initVoice() {
+            if (!('webkitSpeechRecognition' in window)) {
+                alert("Browser not supported. Please use Chrome.");
+                return;
+            }
+
+            recognition = new webkitSpeechRecognition();
+            recognition.continuous = false; 
+            recognition.interimResults = true; 
+            recognition.lang = currentLang;
+
+            recognition.onstart = () => {
+                isListening = true;
+                updateStatus('AWAITING COMMAND', 'var(--cyan)');
+                document.getElementById('orb-container').classList.add('listening');
+            };
+
+            recognition.onend = () => {
+                isListening = false;
+                
+                // CRITICAL FIX: If AI is speaking, DO NOT restart microphone yet.
+                // Wait for the speak() function to restart it when finished.
+                if (isSpeaking) return;
+
+                const kbActive = document.getElementById('virtual-keyboard-container').classList.contains('active');
+                
+                // Only restart if we are NOT speaking and NOT typing
+                if (!kbActive) {
+                    try { recognition.start(); } catch(e){}
+                }
+            };
+
+            recognition.onresult = (event) => {
+                const result = event.results[0];
+                const text = result[0].transcript;
+                const isFinal = result.isFinal;
+
+                if (text.toLowerCase().includes("stop") || text.toLowerCase().includes("quiet")) {
+                    window.speechSynthesis.cancel();
+                    updateStatus('TERMINATED', 'var(--danger)');
+                    document.getElementById('conversation').innerText = "Command: STOP";
+                    recognition.stop();
+                    return;
+                }
+
+                document.getElementById('conversation').innerText = `"${text}..."`;
+
+                if (isFinal) {
+                    addCommand(text);
+                    processAI(text);
+                }
+            };
+
+            try { recognition.start(); } catch(e){}
+        }
+        // ==========================================
+        // AI PROCESSING (SEND TO PYTHON SERVER)
+        // ==========================================
+        async function processAI(text) {
+            updateStatus('PROCESSING', '#ffff00');
+            
+            try {
+                const response = await fetch('/process', {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ text: text })
+                });
+
+                const data = await response.json();
+                
+                const kbActive = document.getElementById('virtual-keyboard-container').classList.contains('active');
+                if (kbActive) {
+                    typeWriter(data.reply);
+                } else {
+                    document.getElementById('conversation').innerText = `"${data.reply}"`;
+                    speak(data.reply);
+                }
+
+            } catch (error) {
+                console.error("Server Error:", error);
+                const errText = "I lost connection to the mainframe server.";
+                document.getElementById('conversation').innerText = errText;
+                speak(errText);
+                updateStatus('ERROR', 'red');
+            }
+        }
+
+        // ==========================================
+        // TEXT TO SPEECH
+        // ==========================================
+        function loadVoices() {
+            const select = document.getElementById('voiceSelect');
+            let voices = window.speechSynthesis.getVoices();
+            select.innerHTML = "";
+            
+            voices.forEach((v, i) => {
+                const option = document.createElement('option');
+                option.value = i;
+                option.text = `${v.name} (${v.lang})`;
+                select.appendChild(option);
+            });
+
+            if (voices.length === 0) {
+                window.speechSynthesis.onvoiceschanged = loadVoices;
+            }
+        }
+
+        function speak(text) {
+            window.speechSynthesis.cancel();
+
+            isSpeaking = true;
+            updateStatus('SPEAKING', '#ff0055');
+            document.getElementById('orb-container').classList.add('speaking');
+            
+            try { recognition.stop(); } catch(e){}
+
+            const utterance = new SpeechSynthesisUtterance(text);
+            const voices = window.speechSynthesis.getVoices();
+            const selectedIdx = document.getElementById('voiceSelect').value;
+            
+            if (voices[selectedIdx]) {
+                utterance.voice = voices[selectedIdx];
+            } 
+
+            utterance.rate = 1.0;
+            utterance.pitch = 0.9;
+
+            utterance.onend = () => {
+                isSpeaking = false;
+                document.getElementById('orb-container').classList.remove('speaking');
+                updateStatus('AWAITING COMMAND', 'var(--cyan)');
+                
+                // Add small delay to prevent hearing own echo
+                setTimeout(() => {
+                    const kbActive = document.getElementById('virtual-keyboard-container').classList.contains('active');
+                    if (!kbActive) {
+                        try { recognition.start(); } catch(e){}
+                    }
+                }, 200);
+            };
+
+            window.speechSynthesis.speak(utterance);
+        }
+
+        // ==========================================
+        // UI & UTILITIES
+        // ==========================================
+        function updateStatus(text, color) {
+            const el = document.getElementById('status-text');
+            el.innerText = text;
+            el.style.color = color;
+        }
+
+        function addCommand(text) {
+            const time = new Date().toLocaleTimeString();
+            commandLog.unshift(`> [${time}] ${text}`);
+            if (commandLog.length > 6) commandLog.pop();
+            document.getElementById("command-history").innerHTML = commandLog.join("<br>");
+        }
+
+        function typeWriter(text) {
+            const target = document.getElementById('type-target');
+            target.innerHTML = "";
+            let i = 0;
+            function nextChar() {
+                if (i < text.length) {
+                    target.innerHTML += text.charAt(i);
+                    i++;
+                    setTimeout(nextChar, 30); 
+                }
+            }
+            nextChar();
+        }
+
+        function getLocationWeather() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(pos => {
+                    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${pos.coords.latitude}&longitude=${pos.coords.longitude}&current_weather=true`)
+                    .then(r => r.json())
+                    .then(data => {
+                        document.getElementById("weather-temp").innerText = data.current_weather.temperature + "°C";
+                        document.getElementById("weather-desc").innerText = "Live Data Acquired";
+                    });
+                });
+            }
+        }
+
+        // ==========================================
+        // KEYBOARD LOGIC
+        // ==========================================
+        function toggleKeyboard() {
+            const kb = document.getElementById('virtual-keyboard-container');
+            const isActive = kb.classList.contains('active');
+            
+            if (isActive) {
+                kb.classList.remove('active');
+                try { recognition.start(); } catch(e){}
+            } else {
+                kb.classList.add('active');
+                try { recognition.stop(); } catch(e){}
+                document.getElementById('kb-input').focus();
+            }
+        }
+
+        function typeKey(char) {
+            const input = document.getElementById('kb-input');
+            input.value += char;
+            input.focus();
+        }
+
+        function sendKeyboardInput() {
+            const input = document.getElementById('kb-input');
+            const text = input.value.trim();
+            if (!text) return;
+            
+            input.value = "";
+            document.getElementById('type-target').innerText = "ACCESSING MAINFRAME...";
+            addCommand(text);
+            processAI(text);
+        }
+
+        // Physical Keyboard Sync
+        document.addEventListener('keydown', (e) => {
+            const key = e.key.toLowerCase();
+            const btn = document.querySelector(`button[data-key="${key}"]`);
+            if (btn) btn.classList.add('active-press');
+            
+            const kbActive = document.getElementById('virtual-keyboard-container').classList.contains('active');
+            if(kbActive && key === 'enter') sendKeyboardInput();
+        });
+
+        document.addEventListener('keyup', (e) => {
+            const key = e.key.toLowerCase();
+            const btn = document.querySelector(`button[data-key="${key}"]`);
+            if (btn) btn.classList.remove('active-press');
+        });
+
+        function toggleFullScreen() {
+            if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+            else if (document.exitFullscreen) document.exitFullscreen();
+        }
+
+        function stopAll() {
+            try { recognition.stop(); } catch(e){}
+            window.speechSynthesis.cancel();
+            document.body.innerHTML = "<div style='display:flex;justify-content:center;align-items:center;height:100vh;color:red;font-family:monospace;background:black;'><h1>SYSTEM TERMINATED</h1></div>";
+        }
+    </script>
+</body>
+</html>

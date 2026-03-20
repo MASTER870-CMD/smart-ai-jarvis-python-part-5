@@ -1,0 +1,17 @@
+pip install flask groq AppOpener pyautogui
+pip install flask groq pyautogui AppOpener
+pip install opencv-python cvzone mediapipe pyttsx3 flask groq AppOpener
+pip install flask groq AppOpener pyautogui
+pip install opencv-python numpy
+pip install opencv-python numpy
+pip install cvzone mediapipe
+pip install pyttsx3 cvzone mediapipe
+pip install opencv-python pyttsx3 speechrecognition
+pip install cvzone mediapipe
+pip install opencv-python pyttsx3 SpeechRecognition pyaudio
+pip install mp
+ pip install mediapipe
+ pip install python-pptx
+ pip install pywhatkit
+ pip install google-generativeai
+ pip install google-generativeai PyPDF2
