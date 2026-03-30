@@ -9,6 +9,7 @@
 
 ---
 
+
 <p align="center">
   <img src="https://readme-typing-svg.herokuapp.com/?color=00F5FF&size=28&center=true&vCenter=true&width=800&lines=AI+NEXUS+Neural+Interface;JARVIS+Inspired+System;Desktop+AI+App;Built+With+Python">
 </p>
